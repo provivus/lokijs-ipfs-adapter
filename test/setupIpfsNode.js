@@ -1,5 +1,4 @@
 const tmp = require('tmp');
-const fs = require('fs-extra');
 const Store = require('fs-pull-blob-store');
 const IPFSRepo = require('ipfs-repo');
 const IPFS = require('ipfs');
