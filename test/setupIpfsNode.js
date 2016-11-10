@@ -1,25 +1,24 @@
-var fs = require('fs-extra');
-var Store = require('fs-pull-blob-store');
-var IPFSRepo = require('ipfs-repo');
-var IPFS = require('ipfs');
+const tmp = require('tmp');
+const fs = require('fs-extra');
+const Store = require('fs-pull-blob-store');
+const IPFSRepo = require('ipfs-repo');
+const IPFS = require('ipfs');
 
 module.exports = function(callback) {
-    var repoPath = '/tmp/ipfsrepo';
-    fs.removeSync(repoPath);
-
-    var repo = new IPFSRepo(repoPath, {
+    const repoPath = tmp.dirSync({unsafeCleanup: true}).name;
+    const repo = new IPFSRepo(repoPath, {
         stores: Store
     });
-    var node = new IPFS(repo);
-    node.init({emptyRepo: true}, function(err) {
+    const node = new IPFS(repo);
+    node.init({emptyRepo: true}, (err) => {
         if (err) {
             callback(err);
         }
-        node.load(function(err) {
+        node.load((err) => {
             if (err) {
                 callback(err);
             }
-            node.goOnline(function(err) {
+            node.goOnline((err) => {
                 if (err) {
                     callback(err);
                 }
