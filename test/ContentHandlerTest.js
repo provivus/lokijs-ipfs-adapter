@@ -1,6 +1,7 @@
 const assert = require('assert');
 const setupIpfsNode = require('./setupIpfsNode');
 const ContentHandler = require('../src/ContentHandler');
+const Crypto = require('../src/Crypto');
 
 describe('ContentHandler', function() {
     this.timeout(30000);
@@ -9,6 +10,7 @@ describe('ContentHandler', function() {
     const global = {};
 
     before(function(done) {
+        global.key = Crypto.generateKey();
         setupIpfsNode((err, node) => {
             global.ipfs = node;
             done();
@@ -45,7 +47,7 @@ describe('ContentHandler', function() {
             let content = new ContentHandler({
                 ipfs: global.ipfs,
                 encryption: true,
-                encryptionKey: 'theEncryptionKey'
+                encryptionKey: global.key
             });
             content.save(CONTENT_DATA)
                 .then((hash) => {

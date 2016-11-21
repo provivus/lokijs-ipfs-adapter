@@ -1,26 +1,38 @@
-var crypto = require('crypto');
+"use strict";
 
-const ALGORITHM = 'aes-256-cbc';
+const forge = require('node-forge');
+const cipher = forge.cipher;
+const util = forge.util;
+const random = forge.random;
+
+const ALGORITHM = 'AES-CBC';
 const KEY_LENGTH = 32;
+const IV = Buffer.from('7c2e1d3599f06b9cc926bb5773918622', 'hex').toString();
 
 class Crypto {
 
     constructor(key) {
-        this.cipher = crypto.createCipher(ALGORITHM, key);
-        this.decipher = crypto.createDecipher(ALGORITHM, key);
+        const keyBytes = util.hexToBytes(key);
+        this.cipher = cipher.createCipher(ALGORITHM, keyBytes);
+        this.decipher = cipher.createDecipher(ALGORITHM, keyBytes);
     }
 
     encrypt(data) {
-        return Buffer.concat([this.cipher.update(data), this.cipher.final()]);
+        this.cipher.start({iv: IV});
+        this.cipher.update(util.createBuffer(data.toString('binary')));
+        this.cipher.finish();
+        return Buffer.from(this.cipher.output.getBytes(), 'binary');
     }
 
     decrypt(data) {
-        return Buffer.concat([this.decipher.update(data), this.decipher.final()]);
+        this.decipher.start({iv: IV});
+        this.decipher.update(util.createBuffer(data.toString('binary')));
+        this.decipher.finish();
+        return Buffer.from(this.decipher.output.getBytes(), 'binary');
     }
 
     static generateKey() {
-        const key = crypto.randomBytes(KEY_LENGTH);
-        return key.toString('hex');
+        return util.bytesToHex(random.getBytesSync(KEY_LENGTH));
     }
 
 }
