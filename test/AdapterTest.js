@@ -11,7 +11,7 @@ describe('Adapter', function() {
     before((done) => {
         setupIpfsNode((err, node) => {
             if (err) {
-                done(err);
+                return done(err);
             }
             global.ipfs = node;
             global.adapter = new Adapter({
