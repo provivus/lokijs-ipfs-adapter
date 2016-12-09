@@ -4,19 +4,25 @@ const ContentHandler = require('../src/ContentHandler');
 const Crypto = require('../src/Crypto');
 
 describe('ContentHandler', function() {
-    this.timeout(30000);
+    this.timeout(10000);
 
     const CONTENT_DATA = 'testdata';
     const global = {};
 
-    before(function(done) {
-        global.key = Crypto.generateKey();
-        setupIpfsNode((err, node) => {
-            global.ipfs = node;
-            done();
-        });
+    before(function() {
+        return setupIpfsNode()
+            .then((node) => {
+                global.ipfs = node;
+                global.contentHandler = new ContentHandler({
+                    ipfs: global.ipfs
+                });
+                global.encryptedContentHandler = new ContentHandler({
+                    ipfs: global.ipfs,
+                    encryption: true,
+                    encryptionKey: Crypto.generateKey()
+                });
+            });
     });
-
 
     after(function(done) {
         global.ipfs.goOffline((err) => {
@@ -27,12 +33,9 @@ describe('ContentHandler', function() {
     describe('save and load', function() {
 
         it('should save and load content', (done) => {
-            let content = new ContentHandler({
-                ipfs: global.ipfs
-            });
-            content.save(CONTENT_DATA)
+            global.contentHandler.save(CONTENT_DATA)
                 .then((hash) => {
-                    return content.load(hash)
+                    return global.contentHandler.load(hash)
                         .then((data) => {
                             assert.equal(data.toString(), CONTENT_DATA);
                             done();
@@ -44,14 +47,9 @@ describe('ContentHandler', function() {
         });
 
         it('should save and load encrypted content', (done) => {
-            let content = new ContentHandler({
-                ipfs: global.ipfs,
-                encryption: true,
-                encryptionKey: global.key
-            });
-            content.save(CONTENT_DATA)
+            global.encryptedContentHandler.save(CONTENT_DATA)
                 .then((hash) => {
-                    return content.load(hash)
+                    return global.encryptedContentHandler.load(hash)
                         .then((data) => {
                             assert.equal(data.toString(), CONTENT_DATA);
                             done();

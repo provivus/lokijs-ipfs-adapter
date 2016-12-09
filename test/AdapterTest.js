@@ -1,25 +1,40 @@
 const assert = require('assert');
-const loki = require('lokijs');
+const Loki = require('lokijs');
 const setupIpfsNode = require('./setupIpfsNode');
-const Adapter = require('../src/Adapter');
+const LokiIPFSAdapter = require('../src/LokiIPFSAdapter');
 
-describe('Adapter', function() {
-    this.timeout(30000);
+describe('LokiIPFSAdapter', function() {
+    this.timeout(10000);
 
     const global = {};
 
-    before((done) => {
-        setupIpfsNode((err, node) => {
-            if (err) {
-                return done(err);
-            }
-            global.ipfs = node;
-            global.adapter = new Adapter({
+    before(() => {
+        return setupIpfsNode()
+            .then((node) => {
+                global.ipfs = node;
+            })
+            .then(() => {
+                return _initdb();
+            });
+    });
+
+    function _initdb() {
+        return new Promise((resolve) => {
+            const adapter = new LokiIPFSAdapter({
                 ipfs: global.ipfs
             });
-            done();
+            const db = new Loki('db1', {adapter: adapter});
+            const collection = db.addCollection('users');
+            collection.insert({id: 1, firstName: 'john', lastName: 'doe'});
+
+            adapter.on('saved', () => {
+                global.configHash = adapter.getConfigHash();
+                resolve();
+            });
+
+            db.saveDatabase();
         });
-    });
+    }
 
     after((done) => {
         global.ipfs.goOffline((err) => {
@@ -27,29 +42,62 @@ describe('Adapter', function() {
         });
     });
 
-    describe('saveDatabase', () => {
-        it('should save database', (done) => {
-            const db = new loki('db1', {adapter: global.adapter});
-            const collection = db.addCollection('collection1');
-            collection.insert({id: 1, firstName: 'john', lastName: 'doe'});
-            collection.insert({id: 2, firstName: 'jane', lastName: 'doe'});
-            db.saveDatabase((err) => {
+    describe('loadDatabase', () => {
+
+        it('should load existing database', (done) => {
+            const db = _db('db1', {}, {
+                ipfs: global.ipfs,
+                configHash: global.configHash
+            });
+
+            db.loadDatabase({}, (err) => {
+                const results = db.getCollection('users').find({firstName: 'john'});
+                assert.equal(results.length, 1);
                 done(err);
             });
-        })
+        });
+
+        it('should create empty database', (done) => {
+            const db = _db('db1', {}, {
+                ipfs: global.ipfs
+            });
+            db.loadDatabase({}, (err) => {
+                const collection = db.getCollection('users');
+                assert.equal(collection, null);
+                done(err);
+            });
+        });
+
     });
 
-    describe('loadDatabase', () => {
-        it('should load database', (done) => {
-            const db = new loki('db1', {adapter: global.adapter});
-            db.loadDatabase({}, (err) => {
-                const collection = db.getCollection('collection1');
-                const results = collection.find({firstName: 'jane'});
-                assert.equal(results.length, 1);
-                assert.equal(results[0].id, 2);
-                done(err);
-            });
-        })
+
+    it('should autosave changes', (done) => {
+        const db = _db('db1',
+            {
+                autosave: true,
+                autosaveInterval: 500
+            },
+            {
+                ipfs: global.ipfs,
+                configHash: global.configHash
+            }
+        );
+        db.loadDatabase({}, (err) => {
+            if (err) {
+                return done(err);
+            }
+            db.getCollection('users').insert({id: 2, firstName: 'jane', lastName: 'doe'});
+        });
+
+        setInterval(() => {
+            assert.ok(!db.autosaveDirty());
+            done();
+        }, 1000);
     });
+
+    function _db(dbname, dbOptions = {}, adapterOptions = {}) {
+        dbOptions.adapter = new LokiIPFSAdapter(adapterOptions);
+        return new Loki(dbname, dbOptions);
+    }
 
 });
