@@ -10,7 +10,9 @@ class LokiIPFSAdapter extends EventEmitter {
         this.databases = {};
         this.configHash = options.configHash;
         this.contentHandler = new ContentHandler({
-            ipfs: options.ipfs
+            ipfs: options.ipfs,
+            encryption: options.encryption || false,
+            encryptionKey: options.encryptionKey
         });
     }
 

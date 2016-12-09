@@ -2,6 +2,7 @@ const assert = require('assert');
 const Loki = require('lokijs');
 const setupIpfsNode = require('./setupIpfsNode');
 const LokiIPFSAdapter = require('../src/LokiIPFSAdapter');
+const Crypto = require('../src/Crypto');
 
 describe('LokiIPFSAdapter', function() {
     this.timeout(10000);
@@ -20,8 +21,11 @@ describe('LokiIPFSAdapter', function() {
 
     function _initdb() {
         return new Promise((resolve) => {
+            global.encryptionKey = Crypto.generateKey();
             const adapter = new LokiIPFSAdapter({
-                ipfs: global.ipfs
+                ipfs: global.ipfs,
+                encryption: true,
+                encryptionKey: global.encryptionKey
             });
             const db = new Loki('db1', {adapter: adapter});
             const collection = db.addCollection('users');
@@ -96,6 +100,8 @@ describe('LokiIPFSAdapter', function() {
     });
 
     function _db(dbname, dbOptions = {}, adapterOptions = {}) {
+        adapterOptions.encryption = true;
+        adapterOptions.encryptionKey = global.encryptionKey;
         dbOptions.adapter = new LokiIPFSAdapter(adapterOptions);
         return new Loki(dbname, dbOptions);
     }
